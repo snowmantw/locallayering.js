@@ -16,7 +16,10 @@
 
     "dependencies":
     {
-        "underscore": "1.4.x"
+        "underscore": "1.4.x",
+        "express": "3.x",
+        "ejs":"0.7.x",
+        "websocket":"1.0.7"
     },
 
     "license": "GPLv3",
