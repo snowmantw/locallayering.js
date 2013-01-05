@@ -24,7 +24,7 @@ app.configure(function()
 {
     app.set('views', __dirname+'/template');
     app.set("view options",{layout:false});
-    app.use('/library',express.static( __dirname + '/../../library'));
+    app.use('/library',express.static( __dirname + '/library'));
     app.use('/media',express.static( __dirname + '/media'));
     //app.use(allowCrossDomain)
     app.use(express.methodOverride());
@@ -33,6 +33,10 @@ app.configure(function()
 
 app.get('/', function(req,res){
     res.render('index.ejs')
+});
+
+app.get('/example', function(req,res){
+    res.render('example.ejs')
 });
 
 /*
