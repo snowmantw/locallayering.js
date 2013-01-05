@@ -25,6 +25,7 @@
     "license": "GPLv3",
     "engines": 
     {   
-        "node": ">=0.6"
+        "node": ">=0.6",
+        "npm": "1.1.x"
     }
 }
