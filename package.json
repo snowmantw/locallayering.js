@@ -16,7 +16,6 @@
 
     "dependencies":
     {
-        "bower": "0.6.8",
         "underscore": "1.4.x",
         "express": "3.x",
         "ejs":"0.7.x",
