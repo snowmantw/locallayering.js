@@ -4,7 +4,7 @@ reference
 *.swp
 .*
 
-library/threejs
-library/threedlibrary
+library/threejs/*
+library/threedlibrary/*
 !library/threejs/build
 !library/threedlibrary/tdl
