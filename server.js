@@ -4,7 +4,7 @@ var express = require('express')
 var app = express()
 var http = require('http')
 var server = http.createServer(app)
-var ws = new (require('websocket').server)({httpServer: server, port: 3030})
+//var ws = new (require('websocket').server)({httpServer: server, port: 3030})
 
 var allowCrossDomain = function(req, res, next) {
     res.header('Access-Control-Allow-Origin', '*');
@@ -25,12 +25,17 @@ app.configure(function()
     app.set('views', __dirname+'/template');
     app.set("view options",{layout:false});
     app.use('/library',express.static( __dirname + '/../../library'));
-    app.use('/build',express.static( __dirname + '/../../build'));
     app.use('/media',express.static( __dirname + '/media'));
-    app.use(allowCrossDomain)
+    //app.use(allowCrossDomain)
     app.use(express.methodOverride());
     app.use(express.bodyParser());
 });
+
+app.get('/', function(req,res){
+    res.render('index.ejs')
+});
+
+/*
 
 app.all('/*', function(req, res, next) {
       res.header("Access-Control-Allow-Origin", "*");
@@ -83,6 +88,7 @@ app.delete('/testAjax/:test', function(req, res){
     }
 });
 
+
 ws.on
 (   'request'
 ,   function(req)
@@ -100,5 +106,6 @@ ws.on
     )
 }
 )
+*/
 
 server.listen(3000);
