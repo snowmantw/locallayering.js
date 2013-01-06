@@ -4,7 +4,8 @@ reference
 *.swp
 .*
 
-library/threejs/*
-library/threedlibrary/*
+library/*/*
+!library/main
 !library/threejs/build
 !library/threedlibrary/tdl
+!library/underscore/underscore-min.js

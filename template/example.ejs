@@ -1,254 +1,339 @@
+<!-- Licensed under a BSD license. See license.html for license -->
 <!DOCTYPE html>
-<html lang="en">
-	<head>
-		<title>three.js webgl - lines - cubes</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<style>
-			body {
-				background-color: #000000;
-				margin: 0px;
-				overflow: hidden;
-			}
-
-			a {
-				color:#0078ff;
-			}
-
-			#info {
-				position: absolute;
-				top: 10px; width: 100%;
-				color: #ffffff;
-				padding: 5px;
-				font-family: Monospace;
-				font-size: 13px;
-				text-align: center;
-				z-index:100;
-			}
-
-			a {
-				color: orange;
-				text-decoration: none;
-			}
-
-			a:hover {
-				color: #0080ff;
-			}
-
-		</style>
-	</head>
-	<body>
-
-		<div id="info">
-			<a href="http://threejs.org" target="_blank">three.js</a> - lines WebGL demo
-			[<a href="http://en.wikipedia.org/wiki/Hilbert_curve">Hilbert curve</a> thanks to <a href="http://www.openprocessing.org/visuals/?visualID=15599">Thomas Diewald</a>]
-		</div>
-
-		<script src="/library/threejs/build/three.min.js"></script>
-
-		<script src="/library/main/examples/js/Detector.js"></script>
-		<script src="/library/main/examples/js/libs/stats.min.js"></script>
-
-		<script>
-
-			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
-
-			var mouseX = 0, mouseY = 0,
-
-			windowHalfX = window.innerWidth / 2,
-			windowHalfY = window.innerHeight / 2,
-
-			camera, scene, renderer;
-
-			init();
-			animate();
-
-			function init() {
-
-				var i, material, container;
-
-				container = document.createElement( 'div' );
-				document.body.appendChild( container );
-
-				camera = new THREE.PerspectiveCamera( 33, window.innerWidth / window.innerHeight, 1, 10000 );
-				camera.position.z = 700;
-
-				scene = new THREE.Scene();
-
-				renderer = new THREE.WebGLRenderer();
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				container.appendChild( renderer.domElement );
-
-				var geometry = new THREE.Geometry(),
-					points = hilbert3D( new THREE.Vector3( 0,0,0 ), 200.0, 4, 0, 1, 2, 3, 4, 5, 6, 7 );
-
-				for ( i = 0; i < points.length; i ++ ) {
-
-					geometry.vertices.push( points[i] );
-
-				}
-
-
-				// lines
-
-				var line, p, scale = 0.3, d = 125, c1 = 0x553300, c2 = 0x555555, c3 = 0x992800, g1 = geometry,
-					m1 = new THREE.LineBasicMaterial( { color: c1, opacity: 1, blending: THREE.AdditiveBlending, transparent: true } ),
-					m2 = new THREE.LineBasicMaterial( { color: c2, opacity: 1, blending: THREE.AdditiveBlending, transparent: true } ),
-					m3 = new THREE.LineBasicMaterial( { color: c3, opacity: 1, blending: THREE.AdditiveBlending, transparent: true } ),
-					parameters = [ [ m3, scale*0.5, [0,0,0],  g1 ], [ m2, scale*0.5, [d, 0, 0],  g1 ], [ m2, scale*0.5, [-d, 0, 0],  g1 ],
-								   [ m2, scale*0.5, [0,d,0],  g1 ], [ m2, scale*0.5, [d, d, 0],  g1 ], [ m2, scale*0.5, [-d, d, 0],  g1 ],
-								   [ m2, scale*0.5, [0,-d,0], g1 ], [ m2, scale*0.5, [d, -d, 0], g1 ], [ m2, scale*0.5, [-d, -d, 0], g1 ],
-
-								   [ m1, scale*0.5, [2*d, 0, 0],  g1 ], [ m1, scale*0.5, [-2*d, 0, 0],  g1 ],
-								   [ m1, scale*0.5, [2*d, d, 0],  g1 ], [ m1, scale*0.5, [-2*d, d, 0],  g1 ],
-								   [ m1, scale*0.5, [2*d, -d, 0], g1 ], [ m1, scale*0.5, [-2*d, -d, 0], g1 ],
-								   ];
-
-				for ( i = 0; i < parameters.length; i ++ ) {
-
-					p = parameters[ i ];
-
-					line = new THREE.Line( p[ 3 ],  p[ 0 ] );
-
-					line.scale.x = line.scale.y = line.scale.z =  p[ 1 ];
-
-					line.position.x = p[ 2 ][ 0 ];
-					line.position.y = p[ 2 ][ 1 ];
-					line.position.z = p[ 2 ][ 2 ];
-
-					scene.add( line );
-
-				}
-
-				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
-				document.addEventListener( 'touchmove', onDocumentTouchMove, false );
-
-				//
-
-				window.addEventListener( 'resize', onWindowResize, false );
-
-			}
-
-			function onWindowResize() {
-
-				windowHalfX = window.innerWidth / 2;
-				windowHalfY = window.innerHeight / 2;
-
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
-
-				renderer.setSize( window.innerWidth, window.innerHeight );
-
-			}
-
-			// port of Processing Java code by Thomas Diewald
-			// http://www.openprocessing.org/visuals/?visualID=15599
-
-			function hilbert3D( center, side, iterations, v0, v1, v2, v3, v4, v5, v6, v7 ) {
-
-				var half = side/2,
-
-					vec_s = [
-
-					new THREE.Vector3( center.x - half, center.y + half, center.z - half ),
-					new THREE.Vector3( center.x - half, center.y + half, center.z + half ),
-					new THREE.Vector3( center.x - half, center.y - half, center.z + half ),
-					new THREE.Vector3( center.x - half, center.y - half, center.z - half ),
-					new THREE.Vector3( center.x + half, center.y - half, center.z - half ),
-					new THREE.Vector3( center.x + half, center.y - half, center.z + half ),
-					new THREE.Vector3( center.x + half, center.y + half, center.z + half ),
-					new THREE.Vector3( center.x + half, center.y + half, center.z - half )
-
-					],
-
-					vec = [ vec_s[ v0 ], vec_s[ v1 ], vec_s[ v2 ], vec_s[ v3 ], vec_s[ v4 ], vec_s[ v5 ], vec_s[ v6 ], vec_s[ v7 ] ];
-
-				if( --iterations >= 0 ) {
-
-					var tmp = [];
-
-					Array.prototype.push.apply( tmp, hilbert3D ( vec[ 0 ], half, iterations, v0, v3, v4, v7, v6, v5, v2, v1 ) );
-					Array.prototype.push.apply( tmp, hilbert3D ( vec[ 1 ], half, iterations, v0, v7, v6, v1, v2, v5, v4, v3 ) );
-					Array.prototype.push.apply( tmp, hilbert3D ( vec[ 2 ], half, iterations, v0, v7, v6, v1, v2, v5, v4, v3 ) );
-					Array.prototype.push.apply( tmp, hilbert3D ( vec[ 3 ], half, iterations, v2, v3, v0, v1, v6, v7, v4, v5 ) );
-					Array.prototype.push.apply( tmp, hilbert3D ( vec[ 4 ], half, iterations, v2, v3, v0, v1, v6, v7, v4, v5 ) );
-					Array.prototype.push.apply( tmp, hilbert3D ( vec[ 5 ], half, iterations, v4, v3, v2, v5, v6, v1, v0, v7 ) );
-					Array.prototype.push.apply( tmp, hilbert3D ( vec[ 6 ], half, iterations, v4, v3, v2, v5, v6, v1, v0, v7 ) );
-					Array.prototype.push.apply( tmp, hilbert3D ( vec[ 7 ], half, iterations, v6, v5, v2, v1, v0, v3, v4, v7 ) );
-
-					return tmp;
-
-				}
-
-				return vec;
-
-			}
-
-			//
-
-			function onDocumentMouseMove(event) {
-
-				mouseX = event.clientX - windowHalfX;
-				mouseY = event.clientY - windowHalfY;
-			}
-
-			function onDocumentTouchStart( event ) {
-
-				if ( event.touches.length > 1 ) {
-
-					event.preventDefault();
-
-					mouseX = event.touches[ 0 ].pageX - windowHalfX;
-					mouseY = event.touches[ 0 ].pageY - windowHalfY;
-
-				}
-
-			}
-
-			function onDocumentTouchMove( event ) {
-
-				if ( event.touches.length == 1 ) {
-
-					event.preventDefault();
-
-					mouseX = event.touches[ 0 ].pageX - windowHalfX;
-					mouseY = event.touches[ 0 ].pageY - windowHalfY;
-
-				}
-
-			}
-
-			//
-
-			function animate() {
-
-				requestAnimationFrame( animate );
-
-				render();
-
-			}
-
-			function render() {
-
-				camera.position.x += ( mouseX - camera.position.x ) * .05;
-				camera.position.y += ( - mouseY + 200 - camera.position.y ) * .05;
-
-				camera.lookAt( scene.position );
-
-				var time = Date.now() * 0.0015;
-
-				for ( var i = 0; i < scene.children.length; i ++ ) {
-
-					var object = scene.children[ i ];
-					if ( object instanceof THREE.Line ) object.rotation.y = time * ( i % 2 ? 1 : -1 );
-
-				}
-
-				renderer.render( scene, camera );
-
-			}
-
-		</script>
-	</body>
+<html>
+<head>
+<meta charset="utf-8">
+<title>WebGL - 2D Image Blend</title>
+<!--<link type="text/css" href="resources/webgl-tutorials.css" rel="stylesheet" />-->
+<script type="text/javascript" src="/library/main/examples/webgl-utils.js"></script>
+<script type="text/javascript" src="/library/underscore/underscore-min.js"></script>
+<script>
+window.onload = main;
+
+function main()
+{
+    stack_test_adjust()
+}
+
+function Node(id, xy, image)
+{
+    this.__id    = id
+    this.__xy    = xy
+    this.__image = image
+    this.__z     = 0
+}
+
+Node.prototype = 
+{
+    id: function()
+    {
+        return this.__id
+    }
+
+    // Return the XY structure. 
+    //
+    ,xy: function()
+    {
+        return this.__xy
+    }
+
+    // The image object.
+    // 
+    ,image: function()
+    {
+        return this.__image
+    }
+
+    ,z: function()
+    {
+        return this.__z
+    }
+}
+
+Layer = function(image, z)
+{
+    this.__image = image
+    this.__z     = z
+}
+
+Layer.prototype = 
+{
+    // The image object.
+    //
+     image: function()
+    {
+        return this.__image
+    }
+    ,z: function()
+    {
+        return this.__z
+    }
+}
+
+// ([Node], Stack, Stack)
+//
+Stack = function(nodes, from, to)
+{
+    this.__nodes = nodes
+    this.__from  = from
+    this.__to    = to
+}
+
+Stack.prototype = 
+{
+    nodes: function()
+    {
+        return this.__nodes
+    }
+    
+    ,from: function()
+    {
+        return this.__from
+    }
+    
+    ,to: function()
+    {
+        return this.__to
+    }
+}
+
+// Can receive a stack of node as specification described.
+//
+// [Node] -> LocalLayering [Node]
+LocalLayering = function(nodes)
+{
+    return new LocalLayering.o(nodes)
+}
+
+LocalLayering.o = function(nodes)
+{
+    this.__nodes = {}
+    _.each(nodes, _.bind(function(node)
+    {
+        this.__nodes[node.id()] = node
+    }, this))
+}
+
+LocalLayering.o.prototype =
+{
+    // Filp-Down one layer.
+     down: function(id)
+    {
+        this.__nodes[id].__z += 1
+        return this
+    }
+
+    // Filp-Up one layer.
+    ,up: function(id)
+    {
+        this.__nodes[id].__z -= 1
+        return this
+    }
+
+    // Final, render out nodes.
+    ,render: function()
+    {
+        _.chain(this.__nodes).
+          sortBy(function(node){ return node.z() }).
+          each(function(node)
+          {
+                // Sorted, render follow the Z order,
+                // first render largest one.
+                render(node.image(), node.xy())
+          })
+        return this
+    }
+}
+
+function do_stack_test_adjust(stack)
+{
+    LocalLayering(stack).render()
+
+    setTimeout(function()
+    {
+        // Test adjust.
+        
+        DEBUG = 
+        LocalLayering(stack).up("1").down("0").render()
+    }
+    , 1000)
+}
+
+
+function stack_test_adjust() {
+
+  var marker_loaded = [] 
+
+  var image0 = new Image();
+  var image1 = new Image();
+
+  var node_image0 = new Node("0",{x: 0, y: 0}, image0) 
+  var node_image1 = new Node("1",{x: 50, y: 50}, image1) 
+
+  image0.src = "/media/examples/leaves0.jpg";  // MUST BE SAME DOMAIN!!!
+  image1.src = "/media/examples/leaves1.jpg";  // MUST BE SAME DOMAIN!!!
+
+  image0.onload = function() {
+    marker_loaded.push(true)
+    if(2 == marker_loaded.length)
+    {
+        do_stack_test_adjust([node_image0, node_image1])
+    }
+  }
+
+  image1.onload = function() {
+    marker_loaded.push(true)
+    if(2 == marker_loaded.length)
+    {
+        do_stack_test_adjust([node_image0, node_image1])
+    }
+  }
+
+/*
+  image0.onload = function() {
+    render(image0, {x: 0, y:0});
+  }
+
+  image1.onload = function() {
+    render(image1, {x: 100, y: 100});
+  }
+*/
+}
+
+function render(image, xy_rect) {
+  // Get A WebGL context
+  var canvas = document.getElementById("canvas");
+  var gl = getWebGLContext(canvas);
+  if (!gl) {
+    return;
+  }
+
+  // setup GLSL program
+  vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
+  fragmentShader = createShaderFromScriptElement(gl, "2d-fragment-shader");
+  program = createProgram(gl, [vertexShader, fragmentShader]);
+  gl.useProgram(program);
+
+  // look up where the vertex data needs to go.
+  var positionLocation = gl.getAttribLocation(program, "a_position");
+  var texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
+
+  // provide texture coordinates for the rectangle.
+  var texCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      0.0,  0.0,
+      1.0,  0.0,
+      0.0,  1.0,
+      0.0,  1.0,
+      1.0,  0.0,
+      1.0,  1.0]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(texCoordLocation);
+  gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
+
+  var texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  // Set the parameters so we can render any size image.
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+  // Upload the image into the texture.
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+  // lookup uniforms
+  var resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+  var textureSizeLocation = gl.getUniformLocation(program, "u_textureSize");
+
+  // set the resolution
+  gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+
+  // set the size of the image
+  gl.uniform2f(textureSizeLocation, image.width, image.height);
+
+  // Create a buffer for the position of the rectangle corners.
+  var positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.enableVertexAttribArray(positionLocation);
+  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+  setRectangle( gl, xy_rect.x, xy_rect.y, image.width, image.height);
+
+  // Draw the rectangle.
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
+function randomInt(range) {
+  return Math.floor(Math.random() * range);
+}
+
+function setRectangle(gl, x, y, width, height) {
+  var x1 = x;
+  var x2 = x + width;
+  var y1 = y;
+  var y2 = y + height;
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+     x1, y1,
+     x2, y1,
+     x1, y2,
+     x1, y2,
+     x2, y1,
+     x2, y2]), gl.STATIC_DRAW);
+}
+
+</script>
+<!-- vertex shader -->
+<script id="2d-vertex-shader" type="x-shader/x-vertex">
+attribute vec2 a_position;
+attribute vec2 a_texCoord;
+
+uniform vec2 u_resolution;
+
+varying vec2 v_texCoord;
+
+void main() {
+   // convert the rectangle from pixels to 0.0 to 1.0
+   vec2 zeroToOne = a_position / u_resolution;
+
+   // convert from 0->1 to 0->2
+   vec2 zeroToTwo = zeroToOne * 2.0;
+
+   // convert from 0->2 to -1->+1 (clipspace)
+   vec2 clipSpace = zeroToTwo - 1.0;
+
+   gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+
+   // pass the texCoord to the fragment shader
+   // The GPU will interpolate this value between points.
+   v_texCoord = a_texCoord;
+}
+</script></script>
+<!-- fragment shader -->
+<script id="2d-fragment-shader" type="x-shader/x-fragment">
+precision mediump float;
+
+// our texture
+uniform sampler2D u_image;
+uniform vec2 u_textureSize;
+
+// the texCoords passed in from the vertex shader.
+varying vec2 v_texCoord;
+
+void main() {
+   vec2 onePixel = vec2(1.0, 1.0) / u_textureSize;
+   gl_FragColor = (
+       texture2D(u_image, v_texCoord) +
+       texture2D(u_image, v_texCoord + vec2(onePixel.x, 0.0)) +
+       texture2D(u_image, v_texCoord + vec2(-onePixel.x, 0.0))) / 3.0;
+}
+</script>
+</head>
+<body>
+<canvas id="canvas" width="400" height="300"></canvas>
+</body>
 </html>
+
+
+
