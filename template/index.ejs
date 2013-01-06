@@ -12,7 +12,8 @@ window.onload = main;
 
 function main()
 {
-    stack_test_adjust()
+//    stack_test_adjust()
+    multiple_stacks_test_adjust()
 }
 
 function Node(id, xy, image)
@@ -99,25 +100,32 @@ Stack.prototype =
 
 // Can receive a stack of node as specification described.
 //
-// [Node] -> LocalLayering [Node]
-LocalLayering = function(nodes)
+// a -> LocalLayering a
+LocalLayering = function(a)
 {
-    return new LocalLayering.o(nodes)
+    return new LocalLayering.o(a)
 }
 
-LocalLayering.o = function(nodes)
+LocalLayering.o = function(stack)
 {
-    this.__nodes = {}
-    _.each(nodes, _.bind(function(node)
-    {
-        this.__nodes[node.id()] = node
-    }, this))
+    this.__stack = stack
 }
 
 LocalLayering.o.prototype =
 {
+    adjust: function()
+    {
+        this.__nodes = {}
+        _.each(this.__stack.nodes(), _.bind(function(node)
+        {
+            this.__nodes[node.id()] = node
+        }, this))
+
+        return this
+    }
+
     // Filp-Down one layer.
-     down: function(id)
+    ,down: function(id)
     {
         this.__nodes[id].__z += 1
         return this
@@ -141,53 +149,132 @@ LocalLayering.o.prototype =
                 // first render largest one.
                 render(node.image(), node.xy())
           })
+        this.__nodes = {}   // Because `render` **return** LocalLayering ()
         return this
     }
 }
 
+
 function do_stack_test_adjust(stack)
 {
-    LocalLayering(stack).render()
+    LocalLayering(stack).adjust().render()
 
     setTimeout(function()
     {
         // Test adjust.
-        
-        DEBUG = 
-        LocalLayering(stack).up("1").down("0").render()
+        LocalLayering(stack).adjust().up("1").down("0").render()
     }
     , 1000)
+}
+
+function do_multiple_stacks_test_adjust(stacks)
+{
+    LocalLayering(stacks[0]).adjust().render()
+    LocalLayering(stacks[1]).adjust().render()
+
+    // TODO: FIXME: 
+    //
+    // It seems that the setTimeout will clear all canvas remaining images.
+    // If I move these 2 render line below out of timeout functions,
+    // they will behavior normally. 
+
+    var _1 = function(_2)
+    {
+        // Test adjust.
+        LocalLayering(stacks[0]).adjust().up("1").down("0").render()
+        setTimeout(function(){ _2() } , 1000)
+    }
+
+    var _2 = function()
+    {
+        // Test adjust.
+        LocalLayering(stacks[1]).adjust().up("3").down("2").render()
+    }
+
+    setTimeout(function(){ _1(_2) } , 1000)
+}
+
+// If all images got loaded, trigger callback
+function imagesLoaderTrigger(images, markers, cb)
+{
+    _.chain(images).
+      each(function(img)
+      {
+            img.onload = function() 
+            {
+                markers.push(true)
+                if(images.length == markers.length)
+                {
+                    cb()
+                }
+            }
+      })
+}
+
+function multiple_stacks_test_adjust()
+{
+    var marker_loaded = [] 
+
+    var image0 = new Image();
+    var image1 = new Image();
+    var image2 = new Image();
+    var image3 = new Image();
+
+    var node_image0 = new Node("0",{x: 150, y: 150}, image0) 
+    var node_image1 = new Node("1",{x: 200, y: 200}, image1) 
+    var node_image2 = new Node("2",{x: 250, y: 250}, image2) 
+    var node_image3 = new Node("3",{x: 300, y: 300}, image3) 
+
+    var stack0 = new Stack([node_image0, node_image1], null, null) 
+    var stack1 = new Stack([node_image2, node_image3], stack0, null) 
+
+    image0.src = "/media/examples/leaves0.jpg";  // MUST BE SAME DOMAIN!!!
+    image1.src = "/media/examples/leaves1.jpg";  // MUST BE SAME DOMAIN!!!
+    image2.src = "/media/examples/leaves2.jpg";  // MUST BE SAME DOMAIN!!!
+    image3.src = "/media/examples/leaves3.jpg";  // MUST BE SAME DOMAIN!!!
+
+    imagesLoaderTrigger
+    (   [image0, image1, image2, image3]
+        , marker_loaded
+        , function()
+        {
+            do_multiple_stacks_test_adjust([stack0, stack1])
+        }
+    )
 }
 
 
 function stack_test_adjust() {
 
-  var marker_loaded = [] 
+    var marker_loaded = [] 
 
-  var image0 = new Image();
-  var image1 = new Image();
+    var image0 = new Image();
+    var image1 = new Image();
 
-  var node_image0 = new Node("0",{x: 0, y: 0}, image0) 
-  var node_image1 = new Node("1",{x: 50, y: 50}, image1) 
+    var node_image0 = new Node("0",{x: 0, y: 0}, image0) 
+    var node_image1 = new Node("1",{x: 50, y: 50}, image1) 
 
-  image0.src = "/media/examples/leaves0.jpg";  // MUST BE SAME DOMAIN!!!
-  image1.src = "/media/examples/leaves1.jpg";  // MUST BE SAME DOMAIN!!!
+    var stack = new Stack([node_image0, node_image1], null, null) 
 
-  image0.onload = function() {
+    image0.src = "/media/examples/leaves0.jpg";  // MUST BE SAME DOMAIN!!!
+    image1.src = "/media/examples/leaves1.jpg";  // MUST BE SAME DOMAIN!!!
+
+    image0.onload = function() {
     marker_loaded.push(true)
-    if(2 == marker_loaded.length)
-    {
-        do_stack_test_adjust([node_image0, node_image1])
+        if(2 == marker_loaded.length)
+        {
+            do_stack_test_adjust(stack)
+        }
     }
-  }
 
-  image1.onload = function() {
-    marker_loaded.push(true)
-    if(2 == marker_loaded.length)
-    {
-        do_stack_test_adjust([node_image0, node_image1])
-    }
-  }
+    imagesLoaderTrigger
+    (   [image0, image1]
+        , marker_loaded
+        , function()
+        {
+            do_stack_test_adjust(stack)
+        }
+    )
 
 /*
   image0.onload = function() {
@@ -331,7 +418,7 @@ void main() {
 </script>
 </head>
 <body>
-<canvas id="canvas" width="400" height="300"></canvas>
+<canvas id="canvas" width="800" height="800"></canvas>
 </body>
 </html>
 
