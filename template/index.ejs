@@ -177,20 +177,23 @@ function do_multiple_stacks_test_adjust(stacks)
     // It seems that the setTimeout will clear all canvas remaining images.
     // If I move these 2 render line below out of timeout functions,
     // they will behavior normally. 
-
+    //
+    // A temporery solution is drawing every pieces in every time the `render` be called.
+    
     var _1 = function(_2)
     {
         // Test adjust.
         LocalLayering(stacks[0]).adjust().up("1").down("0").render()
+        LocalLayering(stacks[1]).adjust().render()
         setTimeout(function(){ _2() } , 1000)
     }
 
     var _2 = function()
     {
         // Test adjust.
+        LocalLayering(stacks[0]).adjust().render()
         LocalLayering(stacks[1]).adjust().up("3").down("2").render()
     }
-
     setTimeout(function(){ _1(_2) } , 1000)
 }
 
