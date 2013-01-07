@@ -7,13 +7,15 @@
 <!--<link type="text/css" href="resources/webgl-tutorials.css" rel="stylesheet" />-->
 <script type="text/javascript" src="/library/main/examples/webgl-utils.js"></script>
 <script type="text/javascript" src="/library/underscore/underscore-min.js"></script>
+<script type="text/javascript" src="/library/jquery/jquery.min.js"></script>
 <script>
 window.onload = main;
 
 function main()
 {
 //    stack_test_adjust()
-    multiple_stacks_test_adjust()
+//    multiple_stacks_test_adjust()
+      ui_test()
 }
 
 function Node(id, xy, image)
@@ -78,6 +80,24 @@ Stack = function(nodes, from, to)
     this.__nodes = nodes
     this.__from  = from
     this.__to    = to
+
+    var z = 0
+    _.each(nodes, function(node)
+    {
+        node.__z = z
+        z += 1
+    })
+
+    // Because public interface are read-only,
+    // we don't need care index-node mismatching problem.
+    this.__map_node = _.reduce
+    (  nodes
+    ,  function(mem, node)
+    {
+       mem[node.id()] = node
+       return mem
+    }
+    , {} ) 
 }
 
 Stack.prototype = 
@@ -96,6 +116,11 @@ Stack.prototype =
     {
         return this.__to
     }
+    
+    ,node: function(id)
+    {
+        return this.__map_node[id]
+    }
 }
 
 // Can receive a stack of node as specification described.
@@ -106,95 +131,110 @@ LocalLayering = function(a)
     return new LocalLayering.o(a)
 }
 
-LocalLayering.o = function(stack)
+LocalLayering.o = function(a)
 {
-    this.__stack = stack
+    this.__a = a
+    this.__bind = {}
 }
 
 LocalLayering.o.prototype =
 {
-    adjust: function()
+    _: function(fn)
     {
-        this.__nodes = {}
-        _.each(this.__stack.nodes(), _.bind(function(node)
-        {
-            this.__nodes[node.id()] = node
-        }, this))
+        this.__a = fn.apply(this.__bind)
+        return this
+    }
 
+    // Naming previous result.
+    //
+    // EX: LocalLayering(graphic).as('graphic')._(function(){ this.graphic ... })
+    //
+    ,as: function(name)
+    {
+        this.__bind[name] = this.__a
+        return this
+    }    
+
+    ,adjust: function(stack)
+    {
+        this.__a = stack
         return this
     }
 
     // Filp-Down one layer.
+    //
+    // LocalLayering Stack -> LocalLayering Stack
     ,down: function(id)
     {
-        this.__nodes[id].__z += 1
+        // +z
+        var target = this.__a.node(id)
+        var nodes = this.__a.nodes()
+
+        for(var idx = 0; idx != nodes.length; idx++)
+        {
+            var node = nodes[idx]
+
+            if( node.id() == target.id() ){ continue }
+            if( node.__z > target.__z )
+            {
+                // find the node above the target, and swap their Z.
+                tmp = node.__z
+                node.__z = target.__z
+                target.__z = tmp
+
+                break
+            }
+        }
         return this
     }
 
     // Filp-Up one layer.
+    //
+    // LocalLayering Stack -> LocalLayering Stack
     ,up: function(id)
     {
-        this.__nodes[id].__z -= 1
+        // -z
+        var target = this.__a.node(id)
+        var nodes = this.__a.nodes()
+
+        for(var idx = 0; idx != nodes.length; idx++)
+        {
+            var node = nodes[idx]
+
+            if( node.id() == target.id() ){ continue }
+            if( node.__z < target.__z )
+            {
+                // find the node above the target, and swap their Z.
+                tmp = node.__z
+                node.__z = target.__z
+                target.__z = tmp
+
+                break
+            }
+        }
         return this
     }
 
-    // Final, render out nodes.
+    // Final, render out all stacks.
+    // Previous result must be `LocalLayering [Stack]`
+    //
     ,render: function()
     {
-        _.chain(this.__nodes).
-          sortBy(function(node){ return node.z() }).
-          each(function(node)
-          {
-                // Sorted, render follow the Z order,
-                // first render largest one.
-                render(node.image(), node.xy())
+        _.chain(this.__a).
+          each(function(stack)
+          { 
+              _.chain(stack.nodes()).
+                sortBy(function(node){ return node.z() }).
+                each(function(node)
+                {
+                      // Sorted, render follow the Z order,
+                      // first render largest one.
+                      render(node.image(), node.xy())
+                })
           })
-        this.__nodes = {}   // Because `render` **return** LocalLayering ()
+
         return this
     }
-}
-
-
-function do_stack_test_adjust(stack)
-{
-    LocalLayering(stack).adjust().render()
-
-    setTimeout(function()
-    {
-        // Test adjust.
-        LocalLayering(stack).adjust().up("1").down("0").render()
-    }
-    , 1000)
-}
-
-function do_multiple_stacks_test_adjust(stacks)
-{
-    LocalLayering(stacks[0]).adjust().render()
-    LocalLayering(stacks[1]).adjust().render()
-
-    // TODO: FIXME: 
-    //
-    // It seems that the setTimeout will clear all canvas remaining images.
-    // If I move these 2 render line below out of timeout functions,
-    // they will behavior normally. 
-    //
-    // A temporery solution is drawing every pieces in every time the `render` be called.
-    
-    var _1 = function(_2)
-    {
-        // Test adjust.
-        LocalLayering(stacks[0]).adjust().up("1").down("0").render()
-        LocalLayering(stacks[1]).adjust().render()
-        setTimeout(function(){ _2() } , 1000)
-    }
-
-    var _2 = function()
-    {
-        // Test adjust.
-        LocalLayering(stacks[0]).adjust().render()
-        LocalLayering(stacks[1]).adjust().up("3").down("2").render()
-    }
-    setTimeout(function(){ _1(_2) } , 1000)
 }
 
 // If all images got loaded, trigger callback
@@ -214,7 +254,35 @@ function imagesLoaderTrigger(images, markers, cb)
       })
 }
 
-function multiple_stacks_test_adjust()
+// Will generate another function to receive the event.
+// Bring all information to the event handler.
+//
+function clickAdjustUp(node, stack, stacks)
+{
+    return function(e)
+    {
+        LocalLayering(stacks).as('stacks').
+            adjust(stack).up(node.id()).
+            _(function(){ return this.stacks}).
+            render()
+    }
+}
+
+// Will generate another function to receive the event.
+// Bring all information to the event handler.
+//
+function clickAdjustDown(node, stack, stacks)
+{
+    return function(e)
+    {   
+        LocalLayering(stacks).as('stacks').
+            adjust(stack).down(node.id()).
+            _(function(){ return this.stacks}).
+            render()
+    }
+}
+
+function ui_test()
 {
     var marker_loaded = [] 
 
@@ -228,8 +296,12 @@ function multiple_stacks_test_adjust()
     var node_image2 = new Node("2",{x: 250, y: 250}, image2) 
     var node_image3 = new Node("3",{x: 300, y: 300}, image3) 
 
+    // Stack will automatically set the order according to the order passed in. 
+    //
     var stack0 = new Stack([node_image0, node_image1], null, null) 
     var stack1 = new Stack([node_image2, node_image3], stack0, null) 
+
+    var stacks = [stack0, stack1]
 
     image0.src = "/media/examples/leaves0.jpg";  // MUST BE SAME DOMAIN!!!
     image1.src = "/media/examples/leaves1.jpg";  // MUST BE SAME DOMAIN!!!
@@ -241,54 +313,21 @@ function multiple_stacks_test_adjust()
         , marker_loaded
         , function()
         {
-            do_multiple_stacks_test_adjust([stack0, stack1])
+            _.chain([{node: node_image0, stack: stack0}, {node: node_image1, stack: stack0},
+                     {node: node_image2, stack: stack1}, {node: node_image3, stack: stack1 }]).
+              each(function(n_s)
+              {
+
+                    $(n_s.node.image()).appendTo('body')
+                    n_s.node.image().addEventListener("click", clickAdjustDown(n_s.node, n_s.stack, stacks ))
+                    n_s.node.image().addEventListener("contextmenu", function(e){e.preventDefault()  /* Right-click */} )
+                    n_s.node.image().addEventListener("contextmenu", clickAdjustUp(n_s.node, n_s.stack, stacks ))
+              })
+              LocalLayering(stacks).render()
         }
     )
 }
 
-
-function stack_test_adjust() {
-
-    var marker_loaded = [] 
-
-    var image0 = new Image();
-    var image1 = new Image();
-
-    var node_image0 = new Node("0",{x: 0, y: 0}, image0) 
-    var node_image1 = new Node("1",{x: 50, y: 50}, image1) 
-
-    var stack = new Stack([node_image0, node_image1], null, null) 
-
-    image0.src = "/media/examples/leaves0.jpg";  // MUST BE SAME DOMAIN!!!
-    image1.src = "/media/examples/leaves1.jpg";  // MUST BE SAME DOMAIN!!!
-
-    image0.onload = function() {
-    marker_loaded.push(true)
-        if(2 == marker_loaded.length)
-        {
-            do_stack_test_adjust(stack)
-        }
-    }
-
-    imagesLoaderTrigger
-    (   [image0, image1]
-        , marker_loaded
-        , function()
-        {
-            do_stack_test_adjust(stack)
-        }
-    )
-
-/*
-  image0.onload = function() {
-    render(image0, {x: 0, y:0});
-  }
-
-  image1.onload = function() {
-    render(image1, {x: 100, y: 100});
-  }
-*/
-}
 
 function render(image, xy_rect) {
   // Get A WebGL context
