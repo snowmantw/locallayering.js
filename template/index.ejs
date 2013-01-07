@@ -11,6 +11,65 @@
 <script>
 window.onload = main;
 
+function clearWorkshop(canvas)
+{   
+    canvas.getContext('2d').setTransform(1,0,0,1,0,0)
+    canvas.getContext('2d').clearRect(0,0, canvas.width, canvas.height)
+}
+
+function readImages(images)
+{
+    return _.chain(images).map
+    ( function(img)
+    {
+        return readImage(img)
+    }
+    )
+}
+
+// ImageObject -> ImageData
+function readImage(image)
+{
+    var ctx = $('#workshop').get(0).getContext('2d')
+    ctx.drawImage(image, 0 ,0)
+    result = ctx.getImageData(0, 0, image.width, image.height)
+    clearWorkshop($('#workshop')[0])
+    return result
+}
+
+// Overlapped images.
+//
+// [ImageData] -> [Stack]
+function partImages(images)
+{
+    var tmpctx = $('#tmp').get(0).getContext('2d')
+
+    var target = images[0]
+    var pixels = target.data
+    var numPixels = target.width * target.height
+
+    var buffer = new Uint8ClampedArray(numPixels)
+
+    for(var i = 0; i < numPixels; i++)
+    {
+        var r = pixels[i*4]
+        var g = pixels[i*4+1]
+        var b = pixels[i*4+2]
+        var a = pixels[i*4+3]
+
+        for(var j = 1; j < images.length; j++)
+        {
+            var aa = images[j].data[i]
+/*
+            if( aa != 255 )
+            {
+                
+            }
+*/
+        }
+    }
+}
+
 function main()
 {
 //    stack_test_adjust()
@@ -168,20 +227,21 @@ LocalLayering.o.prototype =
     {
         // +z
         var target = this.__a.node(id)
-        var nodes = this.__a.nodes()
+        var nodes = _.sortBy(this.__a.nodes(), function(n)
+        {
+            return n.__z
+        })
 
         for(var idx = 0; idx != nodes.length; idx++)
         {
             var node = nodes[idx]
-
-            if( node.id() == target.id() ){ continue }
-            if( node.__z > target.__z )
+            if( node.id() == target.id() )
             {
-                // find the node above the target, and swap their Z.
-                tmp = node.__z
-                node.__z = target.__z
-                target.__z = tmp
-
+                var under = nodes[idx-1]
+                if( undefined == under ) { break }
+                tmpz = target.z()
+                target.__z = under.z()
+                under.__z = tmpz
                 break
             }
         }
@@ -195,20 +255,21 @@ LocalLayering.o.prototype =
     {
         // -z
         var target = this.__a.node(id)
-        var nodes = this.__a.nodes()
+        var nodes = _.sortBy(this.__a.nodes(), function(n)
+        {
+            return n.__z
+        })
 
         for(var idx = 0; idx != nodes.length; idx++)
         {
             var node = nodes[idx]
-
-            if( node.id() == target.id() ){ continue }
-            if( node.__z < target.__z )
+            if( node.id() == target.id() )
             {
-                // find the node above the target, and swap their Z.
-                tmp = node.__z
-                node.__z = target.__z
-                target.__z = tmp
-
+                var over = nodes[idx+1]
+                if( undefined == over ) { break }
+                tmpz = target.z()
+                target.__z = over.z()
+                over.__z = tmpz
                 break
             }
         }
@@ -290,31 +351,35 @@ function ui_test()
     var image1 = new Image();
     var image2 = new Image();
     var image3 = new Image();
+    var image4 = new Image();
 
     var node_image0 = new Node("0",{x: 150, y: 150}, image0) 
     var node_image1 = new Node("1",{x: 200, y: 200}, image1) 
-    var node_image2 = new Node("2",{x: 250, y: 250}, image2) 
-    var node_image3 = new Node("3",{x: 300, y: 300}, image3) 
+    var node_image2 = new Node("2",{x: 300, y: 300}, image2) 
+    var node_image3 = new Node("3",{x: 350, y: 350}, image3) 
+    var node_image4 = new Node("4",{x: 400, y: 400}, image4) 
 
     // Stack will automatically set the order according to the order passed in. 
     //
     var stack0 = new Stack([node_image0, node_image1], null, null) 
-    var stack1 = new Stack([node_image2, node_image3], stack0, null) 
+    var stack1 = new Stack([node_image2, node_image3, node_image4], stack0, null) 
 
     var stacks = [stack0, stack1]
 
-    image0.src = "/media/examples/leaves0.jpg";  // MUST BE SAME DOMAIN!!!
-    image1.src = "/media/examples/leaves1.jpg";  // MUST BE SAME DOMAIN!!!
-    image2.src = "/media/examples/leaves2.jpg";  // MUST BE SAME DOMAIN!!!
-    image3.src = "/media/examples/leaves3.jpg";  // MUST BE SAME DOMAIN!!!
+    image0.src = "/media/examples/leaves0.png";  // MUST BE SAME DOMAIN!!!
+    image1.src = "/media/examples/leaves1.png";  // MUST BE SAME DOMAIN!!!
+    image2.src = "/media/examples/leaves2.png";  // MUST BE SAME DOMAIN!!!
+    image3.src = "/media/examples/leaves3.png";  // MUST BE SAME DOMAIN!!!
+    image4.src = "/media/examples/leaves4.png";  // MUST BE SAME DOMAIN!!!
 
     imagesLoaderTrigger
-    (   [image0, image1, image2, image3]
+    (   [image0, image1, image2, image3, image4]
         , marker_loaded
         , function()
         {
             _.chain([{node: node_image0, stack: stack0}, {node: node_image1, stack: stack0},
-                     {node: node_image2, stack: stack1}, {node: node_image3, stack: stack1 }]).
+                     {node: node_image2, stack: stack1}, {node: node_image3, stack: stack1 },  
+                     {node: node_image4, stack: stack1 }]).
               each(function(n_s)
               {
 
@@ -324,6 +389,7 @@ function ui_test()
                     n_s.node.image().addEventListener("contextmenu", clickAdjustUp(n_s.node, n_s.stack, stacks ))
               })
               LocalLayering(stacks).render()
+
         }
     )
 }
@@ -452,17 +518,19 @@ varying vec2 v_texCoord;
 
 void main() {
    vec2 onePixel = vec2(1.0, 1.0) / u_textureSize;
-   gl_FragColor = (
+   gl_FragColor = texture2D(u_image, v_texCoord); 
+/*
        texture2D(u_image, v_texCoord) +
        texture2D(u_image, v_texCoord + vec2(onePixel.x, 0.0)) +
-       texture2D(u_image, v_texCoord + vec2(-onePixel.x, 0.0))) / 3.0;
+       texture2D(u_image, v_texCoord + vec2(-onePixel.x, 0.0))) / 1.0;
+*/
 }
 </script>
 </head>
 <body>
 <canvas id="canvas" width="800" height="800"></canvas>
+<canvas id="workshop" width="800" height="800" style="display:none" ></canvas>
+<canvas id="tmp" width="800" height="800" style="display:none" ></canvas>
 </body>
 </html>
-
-
 
