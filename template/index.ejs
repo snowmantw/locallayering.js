@@ -132,13 +132,14 @@ Layer.prototype =
     }
 }
 
-// ([Node], Stack, Stack)
+// ([Node], Stack, Stack, Name)
 //
-Stack = function(nodes, from, to)
+Stack = function(nodes, from, to, name)
 {
     this.__nodes = nodes
     this.__from  = from
     this.__to    = to
+    this.__name  = name
 
     var z = 0
     _.each(nodes, function(node)
@@ -179,6 +180,11 @@ Stack.prototype =
     ,node: function(id)
     {
         return this.__map_node[id]
+    }
+
+    ,name: function()
+    {
+        return this.__name
     }
 }
 
@@ -343,40 +349,76 @@ function clickAdjustDown(node, stack, stacks)
     }
 }
 
+function genUrl(prefix, name)
+{
+    return prefix+name+".png"
+}
+
+function genNames(name_stack, names_layer, num_stack)
+{
+    var result = []
+    for(var snum = 1; snum != num_stack+1; snum++)
+    {
+        var names = _.map( names_layer, function(lname)
+        {
+            return name_stack+snum+"-"+lname
+        })
+        result = result.concat(names)
+    }
+    return result
+}
+
+function genNodes(name_stack, names_layer, num_stack)
+{
+    var names_node = genNames(name_stack, names_layer, num_stack)
+    
+    return _.map(names_node, function(name)
+    {
+        var url   = genUrl("/media/examples/", name)
+        var image = new Image()
+        image.src = url
+        var node  = new Node(name, {x: 0, y:0}, image) 
+        return node
+    })    
+}
+
+function genStacks(nodes)
+{
+    // {<stack name>: [<node of stack>,....] , ... }
+    var nodes_image =     
+    _.reduce( nodes, function(mem, node)
+    {
+        var sname = node.id().match(/^[a-zA-Z]*/)[0]
+        if( ! mem[sname] ){ mem[sname] = [node] }
+        else{ mem[sname].push(node) }
+        return mem
+    }, {})
+
+    return _.map(nodes_image, function(nodes, sname)
+    {
+        return new Stack(nodes, null, null, sname) 
+    })
+}
+
 function ui_test()
 {
     var marker_loaded = [] 
 
-    var image0 = new Image();
-    var image1 = new Image();
-    var image2 = new Image();
-    var image3 = new Image();
-    var image4 = new Image();
+    var name_stack  = "s"
+    var names_layer = ["r","g"]
+    var num_stack   = 8
 
-    var node_image0 = new Node("0",{x: 150, y: 150}, image0) 
-    var node_image1 = new Node("1",{x: 200, y: 200}, image1) 
-    var node_image2 = new Node("2",{x: 300, y: 300}, image2) 
-    var node_image3 = new Node("3",{x: 350, y: 350}, image3) 
-    var node_image4 = new Node("4",{x: 400, y: 400}, image4) 
-
-    // Stack will automatically set the order according to the order passed in. 
-    //
-    var stack0 = new Stack([node_image0, node_image1], null, null) 
-    var stack1 = new Stack([node_image2, node_image3, node_image4], stack0, null) 
-
-    var stacks = [stack0, stack1]
-
-    image0.src = "/media/examples/leaves0.png";  // MUST BE SAME DOMAIN!!!
-    image1.src = "/media/examples/leaves1.png";  // MUST BE SAME DOMAIN!!!
-    image2.src = "/media/examples/leaves2.png";  // MUST BE SAME DOMAIN!!!
-    image3.src = "/media/examples/leaves3.png";  // MUST BE SAME DOMAIN!!!
-    image4.src = "/media/examples/leaves4.png";  // MUST BE SAME DOMAIN!!!
+    var nodes  = genNodes(name_stack, names_layer, num_stack)  
+    var stacks = genStacks(nodes) 
 
     imagesLoaderTrigger
-    (   [image0, image1, image2, image3, image4]
+    (   _.map(nodes, function(node){return node.image() }) 
         , marker_loaded
         , function()
         {
+
+            console.log(" UI initialize.")
+/*
             _.chain([{node: node_image0, stack: stack0}, {node: node_image1, stack: stack0},
                      {node: node_image2, stack: stack1}, {node: node_image3, stack: stack1 },  
                      {node: node_image4, stack: stack1 }]).
@@ -385,11 +427,11 @@ function ui_test()
 
                     $(n_s.node.image()).appendTo('body')
                     n_s.node.image().addEventListener("click", clickAdjustDown(n_s.node, n_s.stack, stacks ))
-                    n_s.node.image().addEventListener("contextmenu", function(e){e.preventDefault()  /* Right-click */} )
+                    n_s.node.image().addEventListener("contextmenu", function(e){e.preventDefault()} )  // Right Click
                     n_s.node.image().addEventListener("contextmenu", clickAdjustUp(n_s.node, n_s.stack, stacks ))
               })
               LocalLayering(stacks).render()
-
+*/
         }
     )
 }
