@@ -7,5 +7,6 @@ reference
 library/*/*
 !library/main
 !library/threejs/build
+!library/jquery/jquery.min.js
 !library/threedlibrary/tdl
 !library/underscore/underscore-min.js
