@@ -37,6 +37,8 @@ function readImage(image)
     return result
 }
 
+
+// @TODO
 // Overlapped images.
 //
 // [ImageData] -> [Stack]
@@ -287,18 +289,22 @@ LocalLayering.o.prototype =
     //
     ,render: function()
     {
+        var images = 
         _.chain(this.__a).
-          each(function(stack)
-          { 
-              _.chain(stack.nodes()).
-                sortBy(function(node){ return node.z() }).
-                each(function(node)
-                {
-                      // Sorted, render follow the Z order,
-                      // first render largest one.
-                      render(node.image(), node.xy())
-                })
-          })
+          reduce(function(mem, stack)
+          {
+              mem = mem.concat
+              ( _.chain(stack.nodes()).
+                  sortBy( function(node){ return node.z() }).
+                  map( function(node){ return node.image()} ).
+                  value()
+              )
+              return mem
+
+          } , []).
+          value()
+
+        renders(images, {x:0 ,y: 0})
 
         return this
     }
@@ -388,7 +394,7 @@ function genStacks(nodes)
     var nodes_image =     
     _.reduce( nodes, function(mem, node)
     {
-        var sname = node.id().match(/^[a-zA-Z]*/)[0]
+        var sname = node.id().match(/^[a-zA-Z0-9]*/)[0]
         if( ! mem[sname] ){ mem[sname] = [node] }
         else{ mem[sname].push(node) }
         return mem
@@ -397,6 +403,27 @@ function genStacks(nodes)
     return _.map(nodes_image, function(nodes, sname)
     {
         return new Stack(nodes, null, null, sname) 
+    })
+}
+
+function buildStackUI(stack, stacks)
+{
+    _.each(stack.nodes(), function(node)
+    {
+        var image = $(node.image()).clone()
+        var control = $("<div style='display:inline-block; border:1px #EFEFEF solid'></div>")
+        $(control).append(image.css('height','200px')).appendTo('#controls')
+        image[0].addEventListener("click", clickAdjustDown(node, stack, stacks ))
+        image[0].addEventListener("contextmenu", function(e){e.preventDefault()} )  // Right Click
+        image[0].addEventListener("contextmenu", clickAdjustUp(node, stack, stacks ))
+    })
+}
+
+function buildUI(stacks)
+{
+    _.each(stacks,function(stack)
+    {
+        buildStackUI(stack, stacks)
     })
 }
 
@@ -416,8 +443,8 @@ function ui_test()
         , marker_loaded
         , function()
         {
-
-            console.log(" UI initialize.")
+            LocalLayering(stacks).render()
+            buildUI(stacks)
 /*
             _.chain([{node: node_image0, stack: stack0}, {node: node_image1, stack: stack0},
                      {node: node_image2, stack: stack1}, {node: node_image3, stack: stack1 },  
@@ -436,20 +463,41 @@ function ui_test()
     )
 }
 
+function randomInt(range) {
+  return Math.floor(Math.random() * range);
+}
 
-function render(image, xy_rect) {
+function setRectangle(gl, x, y, width, height) {
+  var x1 = x;
+  var x2 = x + width;
+  var y1 = y;
+  var y2 = y + height;
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+     x1, y1,
+     x2, y1,
+     x1, y2,
+     x1, y2,
+     x2, y1,
+     x2, y2]), gl.STATIC_DRAW);
+}
+
+function renders(images, xy_rect) {
   // Get A WebGL context
+
   var canvas = document.getElementById("canvas");
   var gl = getWebGLContext(canvas);
   if (!gl) {
     return;
   }
+    gl.enable (gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   // setup GLSL program
   vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
   fragmentShader = createShaderFromScriptElement(gl, "2d-fragment-shader");
   program = createProgram(gl, [vertexShader, fragmentShader]);
   gl.useProgram(program);
+
 
   // look up where the vertex data needs to go.
   var positionLocation = gl.getAttribLocation(program, "a_position");
@@ -477,6 +525,13 @@ function render(image, xy_rect) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
+  setRectangle( gl, 0.0, 0.0, 1.0, 1.0);
+
+  _.each(images, function(image)
+  {
+
+  gl.viewport(0, 0, canvas.width, canvas.height);
+
   // Upload the image into the texture.
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 
@@ -497,27 +552,9 @@ function render(image, xy_rect) {
   gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
   setRectangle( gl, xy_rect.x, xy_rect.y, image.width, image.height);
-
-  // Draw the rectangle.
   gl.drawArrays(gl.TRIANGLES, 0, 6);
-}
+  })
 
-function randomInt(range) {
-  return Math.floor(Math.random() * range);
-}
-
-function setRectangle(gl, x, y, width, height) {
-  var x1 = x;
-  var x2 = x + width;
-  var y1 = y;
-  var y2 = y + height;
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-     x1, y1,
-     x2, y1,
-     x1, y2,
-     x1, y2,
-     x2, y1,
-     x2, y2]), gl.STATIC_DRAW);
 }
 
 </script>
@@ -560,6 +597,7 @@ varying vec2 v_texCoord;
 
 void main() {
    vec2 onePixel = vec2(1.0, 1.0) / u_textureSize;
+//   gl_FragColor = texture2D(u_image, v_texCoord); 
    gl_FragColor = texture2D(u_image, v_texCoord); 
 /*
        texture2D(u_image, v_texCoord) +
@@ -570,9 +608,12 @@ void main() {
 </script>
 </head>
 <body>
-<canvas id="canvas" width="800" height="800"></canvas>
-<canvas id="workshop" width="800" height="800" style="display:none" ></canvas>
-<canvas id="tmp" width="800" height="800" style="display:none" ></canvas>
+<canvas id="canvas" width="400" height="400" style="display:block; position:fixed"></canvas>
+<div id="controls-wrapper" style="max-width:800px;position:absolute;left:600px;top:0px;border-left:2px #CCCCCC solid">
+    <div id="controls" style="width:800px" ></div>
+</div>
+<canvas id="workshop" width="400" height="400" style="display:none" ></canvas>
+<canvas id="tmp" width="400" height="400" style="display:none" ></canvas>
 </body>
 </html>
 
