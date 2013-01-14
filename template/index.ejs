@@ -608,9 +608,38 @@ void main() {
 </script>
 </head>
 <body>
-<canvas id="canvas" width="400" height="400" style="display:block; position:fixed"></canvas>
+<canvas id="canvas" width="400" height="400" style="margin-top:-20px;display:block; position:fixed"></canvas>
 <div id="controls-wrapper" style="max-width:800px;position:absolute;left:600px;top:0px;border-left:2px #CCCCCC solid">
     <div id="controls" style="width:800px" ></div>
+</div>
+<div style="position:fixed; top: 395px;width: 580px;border-top:2px #CCCCCC dotted; height:390px; overflow:auto">
+<h1 style="font-size: 18pt">Behind the scene</h1>
+<ol>
+<li>Right Click: Up; Left Click: Down</li>
+<li>Rendering: WebGL</li>
+<li>LocalLayering: Encapsulated context for local layering commands
+<pre style="margin-top:-10px"><code style="font-size: 10pt">
+    LocalLayering(stacks).as("stacks")
+        .adjust(stack_A)
+        .up("layer_1")
+        .down("layer_3")
+        ._(function(){ return this.stacks})
+        .render()
+</code></pre>
+</li>
+<li>Stack and Node structures: described in <a href="http://graphics.cs.cmu.edu/projects/local-layering/layers.r3203.pdf">the paper</a></li>
+<li>Still lacks better way to automatically part images, but basic adapters were usable:</li>
+<pre style="margin-top:-10px"><code style="font-size: 10pt">
+    var name_stack  = "s"
+    var names_layer = ["r","g"]
+    var num_stack   = 8
+
+    // Will automatically load all parted images and build nodes.
+    var nodes  = genNodes(name_stack, names_layer, num_stack)  
+    var stacks = genStacks(nodes) 
+</code></pre>
+</ol>
+
 </div>
 <canvas id="workshop" width="400" height="400" style="display:none" ></canvas>
 <canvas id="tmp" width="400" height="400" style="display:none" ></canvas>
